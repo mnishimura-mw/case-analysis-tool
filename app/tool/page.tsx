@@ -1,13 +1,14 @@
 import { redirect } from "next/navigation";
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase-server";
 import CaseAnalysisTool from "@/components/CaseAnalysisTool";
 
+const SUPABASE_ENABLED =
+  !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  process.env.NEXT_PUBLIC_SUPABASE_URL !== "your_supabase_url_here";
+
 export default async function ToolPage() {
-  // Supabase が設定されていない場合はそのまま表示（Step A 互換）
-  if (
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    process.env.NEXT_PUBLIC_SUPABASE_URL === "your_supabase_url_here"
-  ) {
+  // Supabase が未設定の場合はそのまま表示（Step A 互換）
+  if (!SUPABASE_ENABLED) {
     return <CaseAnalysisTool />;
   }
 
@@ -21,5 +22,15 @@ export default async function ToolPage() {
     redirect("/");
   }
 
-  return <CaseAnalysisTool />;
+  // 管理者かどうかチェック
+  const admin = createAdminClient();
+  const { data: allowedUser } = await admin
+    .from("allowed_users")
+    .select("is_admin")
+    .eq("email", user!.email!)
+    .single();
+
+  const isAdmin = allowedUser?.is_admin ?? false;
+
+  return <CaseAnalysisTool isAdmin={isAdmin} />;
 }

@@ -829,7 +829,7 @@ function Step3({ cases, commonData, productInfo }: {
 }
 
 // ─── MAIN APP ────────────────────────────────────────────────────────────────
-export default function CaseAnalysisTool() {
+export default function CaseAnalysisTool({ isAdmin = false }: { isAdmin?: boolean }) {
   const [activeTab,   setActiveTab]   = useState(0);
   const [productInfo, setProductInfo] = useState<ProductInfo>({companyName:"",name:"",url:"",note:"",fetched:""});
   const [cases,       setCases]       = useState<CaseItem[]>([{...EMPTY_CASE}]);
@@ -854,7 +854,14 @@ export default function CaseAnalysisTool() {
           <div style={{color:"#93C5FD",fontSize:12,fontWeight:700,letterSpacing:2}}>SALES SCHOOL</div>
           <div style={{color:"#fff",fontSize:20,fontWeight:900,marginTop:2}}>事例分析ツール</div>
         </div>
-        <div style={{color:"#93C5FD",fontSize:13}}>課題啓蒙型営業 / 要件啓蒙 シナリオ構築</div>
+        <div style={{display:"flex",alignItems:"center",gap:16}}>
+          <div style={{color:"#93C5FD",fontSize:13}}>課題啓蒙型営業 / 要件啓蒙 シナリオ構築</div>
+          {isAdmin&&(
+            <a href="/admin" style={{padding:"6px 16px",borderRadius:8,background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",fontSize:12,fontWeight:700,textDecoration:"none",letterSpacing:0.5}}>
+              ⚙️ 管理画面
+            </a>
+          )}
+        </div>
       </div>
 
       <div style={{background:"#fff",borderBottom:"2px solid #E2E8F0",display:"flex",padding:"0 32px"}}>
