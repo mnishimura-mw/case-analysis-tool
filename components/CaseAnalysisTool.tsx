@@ -238,7 +238,8 @@ ${text}
   try {
     return JSON.parse(raw.replace(/```json|```/g,"").trim());
   } catch {
-    throw new Error("事例情報を抽出できませんでした。事例記事・導入事例のテキストやURLを指定してください");
+    // URLモードの場合は呼び出し元で詳細なエラーを出すので、ここはシンプルに throw
+    throw new Error("parse_failed");
   }
 }
 
@@ -656,9 +657,30 @@ function Step1({ cases, setCases, productInfo, onNext }: {
           body: JSON.stringify({ url: c.input.trim() }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "URLの取得に失敗しました");
-        const analysis = await analyzeCase(data.text, ctx);
-        if (!analysis || !analysis.background) throw new Error("URLのページから事例情報を抽出できませんでした。有効な事例記事のURLをご確認ください");
+        if (!res.ok) {
+          throw new Error(
+            `【URLの取得に失敗】\n${data.error || "URLの取得に失敗しました"}\n\n` +
+            `→ ページを直接ブラウザで開いて本文をコピーし、「📝 テキスト」タブに貼り付けてお試しください。`
+          );
+        }
+        let analysis;
+        try {
+          analysis = await analyzeCase(data.text, ctx);
+        } catch {
+          throw new Error(
+            `【事例情報の解析に失敗】\nこのページには事例記事の内容が含まれていない可能性があります。\n` +
+            `（例：ツール比較記事・商品紹介ページ・ナビゲーションのみのページ）\n\n` +
+            `→ 事例インタビューや導入事例のページを指定するか、\n` +
+            `　 ページの本文をコピーして「📝 テキスト」タブに貼り付けてお試しください。`
+          );
+        }
+        if (!analysis || !analysis.background) {
+          throw new Error(
+            `【事例情報を抽出できませんでした】\nページの本文が取得できなかった可能性があります。\n` +
+            `（JavaScriptで描画されるページは本文が取れない場合があります）\n\n` +
+            `→ ページをブラウザで開いて本文をコピーし、「📝 テキスト」タブに貼り付けてお試しください。`
+          );
+        }
         updateCase(i, { analysis, loading: false });
       } else if (c.inputType === "file" && c.input.startsWith("data:application/pdf;base64,")) {
         // PDFはAnthropicのdocumentタイプで直接解析
@@ -668,13 +690,18 @@ function Step1({ cases, setCases, productInfo, onNext }: {
         updateCase(i, { analysis, loading: false });
       } else {
         // テキスト入力またはテキストファイル
-        const analysis = await analyzeCase(c.input, ctx);
-        if (!analysis || !analysis.background) throw new Error("テキストから事例情報を抽出できませんでした");
+        let analysis;
+        try {
+          analysis = await analyzeCase(c.input, ctx);
+        } catch {
+          throw new Error("事例情報の解析に失敗しました。\n事例インタビューや導入事例のテキストを入力してください。");
+        }
+        if (!analysis || !analysis.background) throw new Error("テキストから事例情報を抽出できませんでした。\n事例インタビューや導入事例のテキストを入力してください。");
         updateCase(i, { analysis, loading: false });
       }
     } catch(e) {
       updateCase(i, { loading: false });
-      alert("分析に失敗しました: " + (e as Error).message);
+      alert((e as Error).message);
     }
   };
 
