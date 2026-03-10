@@ -1,7 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 export async function POST(req: NextRequest) {
   try {
+    // 認証チェック（Supabase が設定されている場合のみ）
+    if (
+      process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.NEXT_PUBLIC_SUPABASE_URL !== "your_supabase_url_here"
+    ) {
+      const supabase = await createServerSupabaseClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
+
     const body = await req.json();
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { action, ...claudeBody } = body;
