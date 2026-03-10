@@ -24,6 +24,7 @@ export default function AdminPage() {
   const [newIsAdmin, setNewIsAdmin] = useState(false);
   const [adding, setAdding] = useState(false);
   const [deletingEmail, setDeletingEmail] = useState<string | null>(null);
+  const [confirmDeleteEmail, setConfirmDeleteEmail] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
@@ -64,8 +65,8 @@ export default function AdminPage() {
   };
 
   const handleDelete = async (email: string) => {
-    if (!confirm(`${email} のアクセスを削除しますか？`)) return;
     setDeletingEmail(email);
+    setConfirmDeleteEmail(null);
     const res = await fetch("/api/admin/users", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -208,14 +209,32 @@ export default function AdminPage() {
                       </span>
                     )}
                   </div>
-                  <div>
-                    <button
-                      onClick={() => handleDelete(u.email)}
-                      disabled={deletingEmail === u.email}
-                      style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "#FEF2F2", color: "#DC2626", border: "1px solid #FECACA", cursor: deletingEmail === u.email ? "not-allowed" : "pointer", opacity: deletingEmail === u.email ? 0.6 : 1 }}
-                    >
-                      {deletingEmail === u.email ? "削除中..." : "削除"}
-                    </button>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    {confirmDeleteEmail === u.email ? (
+                      <>
+                        <span style={{ fontSize: 11, color: "#DC2626", fontWeight: 700, whiteSpace: "nowrap" }}>本当に削除？</span>
+                        <button
+                          onClick={() => handleDelete(u.email)}
+                          style={{ padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "#DC2626", color: "#fff", border: "none", cursor: "pointer" }}
+                        >
+                          {deletingEmail === u.email ? "削除中..." : "はい"}
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteEmail(null)}
+                          style={{ padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "#F1F5F9", color: "#64748B", border: "1px solid #E2E8F0", cursor: "pointer" }}
+                        >
+                          キャンセル
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDeleteEmail(u.email)}
+                        disabled={deletingEmail === u.email}
+                        style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "#FEF2F2", color: "#DC2626", border: "1px solid #FECACA", cursor: deletingEmail === u.email ? "not-allowed" : "pointer", opacity: deletingEmail === u.email ? 0.6 : 1 }}
+                      >
+                        {deletingEmail === u.email ? "削除中..." : "削除"}
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

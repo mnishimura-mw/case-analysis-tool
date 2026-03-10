@@ -38,17 +38,21 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 未ログインで /tool にアクセスした場合はログインページへリダイレクト
-  if (!user && request.nextUrl.pathname.startsWith("/tool")) {
+  const pathname = request.nextUrl.pathname;
+
+  // 未ログインで /tool または /admin にアクセスした場合はログインページへリダイレクト
+  if (!user && (pathname.startsWith("/tool") || pathname.startsWith("/admin"))) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
+    url.search = "";
     return NextResponse.redirect(url);
   }
 
-  // ログイン済みで / にアクセスした場合はツールへリダイレクト
-  if (user && request.nextUrl.pathname === "/") {
+  // ログイン済みで / にアクセスした場合はツールへリダイレクト（クエリパラメータは除去）
+  if (user && pathname === "/") {
     const url = request.nextUrl.clone();
     url.pathname = "/tool";
+    url.search = "";
     return NextResponse.redirect(url);
   }
 

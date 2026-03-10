@@ -73,7 +73,7 @@ function loadPptxGenJS(): Promise<unknown> {
   return new Promise((resolve, reject) => {
     if ((window as Window & { PptxGenJS?: unknown }).PptxGenJS) { resolve((window as Window & { PptxGenJS?: unknown }).PptxGenJS); return; }
     const s = document.createElement("script");
-    s.src = "https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js";
+    s.src = "https://cdn.jsdelivr.net/npm/pptxgenjs/dist/pptxgen.bundle.js";
     s.onload  = () => resolve((window as Window & { PptxGenJS?: unknown }).PptxGenJS);
     s.onerror = () => reject(new Error("PptxGenJS の読み込みに失敗しました"));
     document.head.appendChild(s);
@@ -89,7 +89,7 @@ async function generateSlide(caseData: CaseItem) {
       addShape: (shape: unknown, opts: unknown) => void;
       addText: (text: unknown, opts: unknown) => void;
     };
-    shapes: { RECTANGLE: unknown };
+    ShapeType: { rect: unknown };
     writeFile: (opts: { fileName: string }) => Promise<void>;
   };
   const pres = new PptxGenJS();
@@ -107,14 +107,14 @@ async function generateSlide(caseData: CaseItem) {
 
   // ── 左カラム背景（紺）
   const LX = 0, LW = 2.7, SH = 5.625;
-  slide.addShape(pres.shapes.RECTANGLE, { x:LX, y:0, w:LW, h:SH, fill:{color:"1e3a8a"}, line:{color:"1e3a8a"} });
+  slide.addShape(pres.ShapeType.rect, { x:LX, y:0, w:LW, h:SH, fill:{color:"1e3a8a"}, line:{color:"1e3a8a"} });
 
   // ── ロゴ枠
-  slide.addShape(pres.shapes.RECTANGLE, { x:0.18, y:0.18, w:2.34, h:0.9, fill:{color:"FFFFFF"}, line:{color:"CCCCCC", width:1} });
+  slide.addShape(pres.ShapeType.rect, { x:0.18, y:0.18, w:2.34, h:0.9, fill:{color:"FFFFFF"}, line:{color:"CCCCCC", width:1} });
   slide.addText("お客様のロゴ", { x:0.18, y:0.18, w:2.34, h:0.9, fontSize:10, color:"999999", align:"center", valign:"middle" });
 
   // ── キーメッセージ枠
-  slide.addShape(pres.shapes.RECTANGLE, { x:0.18, y:1.3, w:2.34, h:1.3, fill:{color:"FFFFFF"}, line:{color:"CCCCCC", width:1} });
+  slide.addShape(pres.ShapeType.rect, { x:0.18, y:1.3, w:2.34, h:1.3, fill:{color:"FFFFFF"}, line:{color:"CCCCCC", width:1} });
   slide.addText(title || "事例のキーメッセージ", { x:0.18, y:1.3, w:2.34, h:1.3, fontSize:10, color:"1e3a8a", align:"center", valign:"middle", wrap:true });
 
   // ── 選定の理由①②③（左下3枠）
@@ -122,7 +122,7 @@ async function generateSlide(caseData: CaseItem) {
   const boxH = 0.72, boxY0 = 2.85, gap = 0.08;
   reasons3.forEach((r, i) => {
     const y = boxY0 + i * (boxH + gap);
-    slide.addShape(pres.shapes.RECTANGLE, { x:0.18, y, w:2.34, h:boxH, fill:{color:"FFFFFF"}, line:{color:"CCCCCC", width:1} });
+    slide.addShape(pres.ShapeType.rect, { x:0.18, y, w:2.34, h:boxH, fill:{color:"FFFFFF"}, line:{color:"CCCCCC", width:1} });
     slide.addText(r, { x:0.22, y, w:2.26, h:boxH, fontSize:8.5, color:"1e3a8a", align:"center", valign:"middle", wrap:true });
   });
 
@@ -131,7 +131,7 @@ async function generateSlide(caseData: CaseItem) {
   const RW = 10 - RX - 0.18;
 
   // タイトルバー
-  slide.addShape(pres.shapes.RECTANGLE, { x:RX, y:0.15, w:RW, h:0.5, fill:{color:"F0F0F0"}, line:{color:"CCCCCC", width:0.5} });
+  slide.addShape(pres.ShapeType.rect, { x:RX, y:0.15, w:RW, h:0.5, fill:{color:"F0F0F0"}, line:{color:"CCCCCC", width:0.5} });
   slide.addText(title || "お客様の取り組みサマリ（タイトル）", { x:RX+0.1, y:0.15, w:RW-0.2, h:0.5, fontSize:12, bold:false, color:"333333", valign:"middle" });
 
   // 4セクション
@@ -236,6 +236,52 @@ ${text}
   const data = await res.json();
   const raw = data.content?.find((b: { type: string; text?: string }) => b.type==="text")?.text || "{}";
   return JSON.parse(raw.replace(/```json|```/g,"").trim());
+}
+
+// PDF用: Anthropicのdocumentタイプを使ってPDFを直接解析
+async function analyzeCasePDF(base64: string, productInfo: string) {
+  const productCtx = productInfo ? `\n\n【分析対象製品の情報】\n${productInfo}` : "";
+  const instruction = `あなたは営業コンサルタントです。添付のPDF（事例資料）を分析し、4つの軸で整理してください。${productCtx}
+
+以下のJSON形式のみで回答してください:
+{
+  "companySize": "従業員規模と業種（例：約15,000名（電子部品メーカー））",
+  "background": ["背景の要点1（40字程度）","背景の要点2","背景の要点3"],
+  "challenges": ["課題の要点1（具体的な困りごとを40字程度）","課題の要点2","課題の要点3"],
+  "reasons": ["選定理由1（なぜ評価されたかを40字程度）","選定理由2","選定理由3"],
+  "effects": ["導入効果1（数字・成果・理由を含めて50字程度）","導入効果2","導入効果3"]
+}
+各項目は必ず3点にし、具体的な文体・粒度でまとめてください。`;
+
+  const res = await fetch("/api/claude", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1200,
+      messages: [{
+        role: "user",
+        content: [
+          {
+            type: "document",
+            source: {
+              type: "base64",
+              media_type: "application/pdf",
+              data: base64,
+            },
+          },
+          {
+            type: "text",
+            text: instruction,
+          },
+        ],
+      }],
+      action: "analyze_case",
+    }),
+  });
+  const data = await res.json();
+  const raw = data.content?.find((b: { type: string; text?: string }) => b.type === "text")?.text || "{}";
+  return JSON.parse(raw.replace(/```json|```/g, "").trim());
 }
 
 async function analyzeCommon(cases: CaseItem[]) {
@@ -405,8 +451,26 @@ function InputArea({ value, onChange, inputType, onTypeChange }: {
     if (!file) return;
     setFileName(file.name);
     const reader = new FileReader();
-    reader.onload = ev => onChange(ev.target?.result as string);
-    reader.readAsText(file);
+    if (file.type === "application/pdf") {
+      // PDFはArrayBufferで読み込んでbase64に変換
+      reader.onload = ev => {
+        const arrayBuffer = ev.target?.result as ArrayBuffer;
+        const bytes = new Uint8Array(arrayBuffer);
+        let binary = "";
+        const chunkSize = 8192;
+        for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+          const chunk = bytes.subarray(offset, offset + chunkSize);
+          binary += String.fromCharCode(...chunk);
+        }
+        const base64 = btoa(binary);
+        onChange(`data:application/pdf;base64,${base64}`);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      // テキスト・Markdownはそのまま読み込み
+      reader.onload = ev => onChange(ev.target?.result as string);
+      reader.readAsText(file);
+    }
   };
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => processFile(e.target.files?.[0]);
   const handleDrop = (e: React.DragEvent) => {
@@ -572,21 +636,35 @@ function Step1({ cases, setCases, productInfo, onNext }: {
 
   const runAnalysis = async (i: number) => {
     const c = cases[i];
-    let text = c.input;
-    if (c.inputType==="url") {
-      updateCase(i,{loading:true});
-      try {
-        const res = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:2000,messages:[{role:"user",content:`以下のURLの事例記事の内容を、あなたが知っている情報やURLから推測できる内容を含めて詳しくまとめてください。\nURL: ${c.input}`}],action:"analyze_case"})});
-        const data = await res.json();
-        text = data.content?.find((b: { type: string; text?: string }) => b.type==="text")?.text || c.input;
-      } catch { text=c.input; }
-    }
-    updateCase(i,{loading:true});
+    updateCase(i, { loading: true });
     try {
-      const ctx = [productInfo.fetched,productInfo.note].filter(Boolean).join("\n");
-      const analysis = await analyzeCase(text,ctx);
-      updateCase(i,{analysis,loading:false});
-    } catch(e) { updateCase(i,{loading:false}); alert("分析に失敗しました: "+(e as Error).message); }
+      const ctx = [productInfo.fetched, productInfo.note].filter(Boolean).join("\n");
+
+      if (c.inputType === "url") {
+        // サーバー側でURLをフェッチしてテキスト抽出
+        const res = await fetch("/api/fetch-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: c.input.trim() }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "URLの取得に失敗しました");
+        const analysis = await analyzeCase(data.text, ctx);
+        updateCase(i, { analysis, loading: false });
+      } else if (c.inputType === "file" && c.input.startsWith("data:application/pdf;base64,")) {
+        // PDFはAnthropicのdocumentタイプで直接解析
+        const base64 = c.input.replace("data:application/pdf;base64,", "");
+        const analysis = await analyzeCasePDF(base64, ctx);
+        updateCase(i, { analysis, loading: false });
+      } else {
+        // テキスト入力またはテキストファイル
+        const analysis = await analyzeCase(c.input, ctx);
+        updateCase(i, { analysis, loading: false });
+      }
+    } catch(e) {
+      updateCase(i, { loading: false });
+      alert("分析に失敗しました: " + (e as Error).message);
+    }
   };
 
   const downloadSlide = async (i: number) => {
