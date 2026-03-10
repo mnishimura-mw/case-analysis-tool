@@ -11,7 +11,8 @@ const WARN        = "#D97706";
 const NUMS        = ["①", "②", "③", "④"];
 
 interface CaseItem {
-  title: string;
+  companyName: string;   // 企業名（分析後に自動入力）
+  caseTitle: string;     // 事例タイトル（分析後に自動生成）
   input: string;
   inputType: string;
   analysis: Analysis | null;
@@ -19,6 +20,8 @@ interface CaseItem {
 }
 
 interface Analysis {
+  companyName?: string;  // 自動抽出
+  caseTitle?: string;    // 自動生成
   companySize?: string;
   background: string[];
   challenges: string[];
@@ -65,7 +68,7 @@ interface Scenario {
   requirements: Requirements;
 }
 
-const EMPTY_CASE: CaseItem = { title: "", input: "", inputType: "text", analysis: null, loading: false };
+const EMPTY_CASE: CaseItem = { companyName: "", caseTitle: "", input: "", inputType: "text", analysis: null, loading: false };
 const MAX_CASES  = 5;
 
 // ─── PPTXGENJS LOADER ────────────────────────────────────────────────────────
@@ -95,7 +98,7 @@ async function generateSlide(caseData: CaseItem) {
   const pres = new PptxGenJS();
   pres.layout = "LAYOUT_16x9";
   const slide = pres.addSlide();
-  const { title, analysis } = caseData;
+  const { companyName, caseTitle, analysis } = caseData;
 
   const bg = analysis?.background  || [];
   const ch = analysis?.challenges  || [];
@@ -115,7 +118,7 @@ async function generateSlide(caseData: CaseItem) {
 
   // ── キーメッセージ枠
   slide.addShape(pres.ShapeType.rect, { x:0.18, y:1.3, w:2.34, h:1.3, fill:{color:"FFFFFF"}, line:{color:"CCCCCC", width:1} });
-  slide.addText(title || "事例のキーメッセージ", { x:0.18, y:1.3, w:2.34, h:1.3, fontSize:10, color:"1e3a8a", align:"center", valign:"middle", wrap:true });
+  slide.addText(companyName || "お客様名", { x:0.18, y:1.3, w:2.34, h:1.3, fontSize:10, color:"1e3a8a", align:"center", valign:"middle", wrap:true });
 
   // ── 選定の理由①②③（左下3枠）
   const reasons3 = re.slice(0,3);
@@ -132,7 +135,7 @@ async function generateSlide(caseData: CaseItem) {
 
   // タイトルバー
   slide.addShape(pres.ShapeType.rect, { x:RX, y:0.15, w:RW, h:0.5, fill:{color:"F0F0F0"}, line:{color:"CCCCCC", width:0.5} });
-  slide.addText(title || "お客様の取り組みサマリ（タイトル）", { x:RX+0.1, y:0.15, w:RW-0.2, h:0.5, fontSize:12, bold:false, color:"333333", valign:"middle" });
+  slide.addText(caseTitle || "お客様の取り組みサマリ（タイトル）", { x:RX+0.1, y:0.15, w:RW-0.2, h:0.5, fontSize:12, bold:false, color:"333333", valign:"middle" });
 
   // 4セクション
   const sections = [
@@ -168,7 +171,7 @@ async function generateSlide(caseData: CaseItem) {
 
 async function downloadSlideFile(caseData: CaseItem) {
   const pres = await generateSlide(caseData);
-  const fileName = `${caseData.title || "事例分析"}.pptx`;
+  const fileName = `${caseData.companyName || caseData.caseTitle || "事例分析"}.pptx`;
   await pres.writeFile({ fileName });
 }
 
@@ -221,6 +224,8 @@ ${text}
 
 以下のJSON形式のみで回答してください:
 {
+  "companyName": "企業名（例：東海電子部品株式会社）",
+  "caseTitle": "この事例を一言で表すタイトル（例：製造業の営業プロセス標準化でリードタイム50%短縮）",
   "companySize": "従業員規模と業種（例：約15,000名（電子部品メーカー））",
   "background": ["背景の要点1（40字程度）","背景の要点2","背景の要点3"],
   "challenges": ["課題の要点1（具体的な困りごとを40字程度）","課題の要点2","課題の要点3"],
@@ -250,6 +255,8 @@ async function analyzeCasePDF(base64: string, productInfo: string) {
 
 以下のJSON形式のみで回答してください:
 {
+  "companyName": "企業名（例：東海電子部品株式会社）",
+  "caseTitle": "この事例を一言で表すタイトル（例：製造業の営業プロセス標準化でリードタイム50%短縮）",
   "companySize": "従業員規模と業種（例：約15,000名（電子部品メーカー））",
   "background": ["背景の要点1（40字程度）","背景の要点2","背景の要点3"],
   "challenges": ["課題の要点1（具体的な困りごとを40字程度）","課題の要点2","課題の要点3"],
@@ -294,9 +301,9 @@ async function analyzeCasePDF(base64: string, productInfo: string) {
 }
 
 async function analyzeCommon(cases: CaseItem[]) {
-  const caseNames = cases.map(c=>c.title).join("、");
+  const caseNames = cases.map(c=>[c.companyName,c.caseTitle].filter(Boolean).join(" / ") || "事例").join("、");
   const summaries = cases.map((c,i) =>
-    `【事例${i+1}: ${c.title}】\n背景: ${c.analysis!.background.join(" / ")}\n課題: ${c.analysis!.challenges.join(" / ")}\n選定理由: ${c.analysis!.reasons.join(" / ")}\n効果: ${c.analysis!.effects.join(" / ")}`
+    `【事例${i+1}: ${[c.companyName,c.caseTitle].filter(Boolean).join(" / ") || `事例${i+1}`}】\n背景: ${c.analysis!.background.join(" / ")}\n課題: ${c.analysis!.challenges.join(" / ")}\n選定理由: ${c.analysis!.reasons.join(" / ")}\n効果: ${c.analysis!.effects.join(" / ")}`
   ).join("\n\n");
 
   const prompt = `以下の${cases.length}つの事例（${caseNames}）を横断比較し、訴求に使える共通点と固有点を3つの軸で整理してください。
@@ -654,7 +661,10 @@ function Step1({ cases, setCases, productInfo, onNext }: {
         const base64 = c.input.replace("data:application/pdf;base64,", "");
         const analysis = await analyzeCasePDF(base64, ctx);
         if (!analysis || !analysis.background) throw new Error("PDFから事例情報を抽出できませんでした。有効な事例PDFをご確認ください");
-        updateCase(i, { analysis, loading: false });
+        const updates: Partial<CaseItem> = { analysis, loading: false };
+        if (!c.companyName && analysis.companyName) updates.companyName = analysis.companyName;
+        if (analysis.caseTitle) updates.caseTitle = analysis.caseTitle;
+        updateCase(i, updates);
       } else {
         // テキスト入力またはテキストファイル
         let analysis;
@@ -664,7 +674,10 @@ function Step1({ cases, setCases, productInfo, onNext }: {
           throw new Error("事例情報の解析に失敗しました。\n事例インタビューや導入事例のテキストを入力してください。");
         }
         if (!analysis || !analysis.background) throw new Error("テキストから事例情報を抽出できませんでした。\n事例インタビューや導入事例のテキストを入力してください。");
-        updateCase(i, { analysis, loading: false });
+        const updates: Partial<CaseItem> = { analysis, loading: false };
+        if (!c.companyName && analysis.companyName) updates.companyName = analysis.companyName;
+        if (analysis.caseTitle) updates.caseTitle = analysis.caseTitle;
+        updateCase(i, updates);
       }
     } catch(e) {
       updateCase(i, { loading: false });
@@ -699,10 +712,12 @@ function Step1({ cases, setCases, productInfo, onNext }: {
         {cases.map((c,i)=>(
           <div key={i} style={{background:"#fff",border:"1.5px solid #E2E8F0",borderRadius:14,padding:20,boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-              <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <div style={{width:28,height:28,borderRadius:"50%",background:ACCENT,color:"#fff",fontWeight:800,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>{i+1}</div>
-                <input value={c.title} onChange={e=>updateCase(i,{title:e.target.value})} placeholder="企業名・事例タイトル"
-                  style={{border:"1.5px solid #E2E8F0",borderRadius:8,padding:"6px 12px",fontSize:14,fontWeight:700,color:"#1E293B",outline:"none",width:220}}/>
+              <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                <div style={{width:28,height:28,borderRadius:"50%",background:ACCENT,color:"#fff",fontWeight:800,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{i+1}</div>
+                <input value={c.companyName} onChange={e=>updateCase(i,{companyName:e.target.value})} placeholder="企業名（分析後に自動入力）"
+                  style={{border:"1.5px solid #E2E8F0",borderRadius:8,padding:"6px 12px",fontSize:13,fontWeight:700,color:"#1E293B",outline:"none",width:180}}/>
+                <input value={c.caseTitle} onChange={e=>updateCase(i,{caseTitle:e.target.value})} placeholder="タイトル（分析後に自動生成）"
+                  style={{border:"1.5px solid #E2E8F0",borderRadius:8,padding:"6px 12px",fontSize:13,color:"#475569",outline:"none",width:260}}/>
                 {c.analysis&&<span style={{fontSize:12,color:SUCCESS,fontWeight:700}}>✓ 分析完了</span>}
               </div>
               <div style={{display:"flex",gap:8}}>
