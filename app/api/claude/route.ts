@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase-server";
+
+const SUPABASE_ENABLED =
+  !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  process.env.NEXT_PUBLIC_SUPABASE_URL !== "your_supabase_url_here";
 
 export async function POST(req: NextRequest) {
+  let userEmail: string | null = null;
+
   try {
     // 認証チェック（Supabase が設定されている場合のみ）
-    if (
-      process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_URL !== "your_supabase_url_here"
-    ) {
+    if (SUPABASE_ENABLED) {
       const supabase = await createServerSupabaseClient();
       const {
         data: { user },
@@ -16,10 +19,10 @@ export async function POST(req: NextRequest) {
       if (!user) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
+      userEmail = user.email ?? null;
     }
 
     const body = await req.json();
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { action, ...claudeBody } = body;
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -41,6 +44,18 @@ export async function POST(req: NextRequest) {
     });
 
     const data = await response.json();
+
+    // 利用ログを記録（成功時のみ・非同期で行いレスポンスをブロックしない）
+    if (SUPABASE_ENABLED && userEmail && response.ok) {
+      const admin = createAdminClient();
+      admin
+        .from("usage_logs")
+        .insert({ user_email: userEmail, action: action ?? "unknown" })
+        .then(({ error }) => {
+          if (error) console.error("usage_logs insert error:", error.message);
+        });
+    }
+
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error("Claude API error:", error);
