@@ -712,13 +712,13 @@ function Step1({ cases, setCases, productInfo, onNext }: {
         {cases.map((c,i)=>(
           <div key={i} style={{background:"#fff",border:"1.5px solid #E2E8F0",borderRadius:14,padding:20,boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-              <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,flex:1,minWidth:0}}>
                 <div style={{width:28,height:28,borderRadius:"50%",background:ACCENT,color:"#fff",fontWeight:800,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{i+1}</div>
                 <input value={c.companyName} onChange={e=>updateCase(i,{companyName:e.target.value})} placeholder="企業名（分析後に自動入力）"
-                  style={{border:"1.5px solid #E2E8F0",borderRadius:8,padding:"6px 12px",fontSize:13,fontWeight:700,color:"#1E293B",outline:"none",width:180}}/>
+                  style={{border:"1.5px solid #E2E8F0",borderRadius:8,padding:"6px 12px",fontSize:13,fontWeight:700,color:"#1E293B",outline:"none",width:180,flexShrink:0}}/>
                 <input value={c.caseTitle} onChange={e=>updateCase(i,{caseTitle:e.target.value})} placeholder="タイトル（分析後に自動生成）"
-                  style={{border:"1.5px solid #E2E8F0",borderRadius:8,padding:"6px 12px",fontSize:13,color:"#475569",outline:"none",width:260}}/>
-                {c.analysis&&<span style={{fontSize:12,color:SUCCESS,fontWeight:700}}>✓ 分析完了</span>}
+                  style={{border:"1.5px solid #E2E8F0",borderRadius:8,padding:"6px 12px",fontSize:13,color:"#475569",outline:"none",flex:1,minWidth:0}}/>
+                {c.analysis&&<span style={{fontSize:12,color:SUCCESS,fontWeight:700,flexShrink:0}}>✓ 分析完了</span>}
               </div>
               <div style={{display:"flex",gap:8}}>
                 {c.analysis&&<button onClick={()=>downloadSlide(i)} style={{padding:"7px 16px",borderRadius:8,fontSize:13,fontWeight:700,background:"#0F9D58",color:"#fff",border:"none",cursor:"pointer"}}>📥 PPTに出力</button>}
