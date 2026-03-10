@@ -45,6 +45,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // ログイン済みで / にアクセスした場合はツールへリダイレクト
+  if (user && request.nextUrl.pathname === "/") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/tool";
+    return NextResponse.redirect(url);
+  }
+
   return supabaseResponse;
 }
 
