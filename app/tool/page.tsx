@@ -2,6 +2,9 @@ import { redirect } from "next/navigation";
 import { createServerSupabaseClient, createAdminClient } from "@/lib/supabase-server";
 import CaseAnalysisTool from "@/components/CaseAnalysisTool";
 
+// リクエストごとにサーバーサイドで認証・管理者チェックを実行するため強制動的レンダリング
+export const dynamic = "force-dynamic";
+
 const SUPABASE_ENABLED =
   !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
   process.env.NEXT_PUBLIC_SUPABASE_URL !== "your_supabase_url_here";
