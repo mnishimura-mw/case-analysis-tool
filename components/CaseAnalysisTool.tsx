@@ -235,7 +235,11 @@ ${text}
   });
   const data = await res.json();
   const raw = data.content?.find((b: { type: string; text?: string }) => b.type==="text")?.text || "{}";
-  return JSON.parse(raw.replace(/```json|```/g,"").trim());
+  try {
+    return JSON.parse(raw.replace(/```json|```/g,"").trim());
+  } catch {
+    throw new Error("事例情報を抽出できませんでした。事例記事・導入事例のテキストやURLを指定してください");
+  }
 }
 
 // PDF用: Anthropicのdocumentタイプを使ってPDFを直接解析
@@ -281,7 +285,11 @@ async function analyzeCasePDF(base64: string, productInfo: string) {
   });
   const data = await res.json();
   const raw = data.content?.find((b: { type: string; text?: string }) => b.type === "text")?.text || "{}";
-  return JSON.parse(raw.replace(/```json|```/g, "").trim());
+  try {
+    return JSON.parse(raw.replace(/```json|```/g, "").trim());
+  } catch {
+    throw new Error("PDFから事例情報を抽出できませんでした。導入事例PDFを指定してください");
+  }
 }
 
 async function analyzeCommon(cases: CaseItem[]) {
