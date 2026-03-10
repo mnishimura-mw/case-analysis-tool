@@ -489,7 +489,7 @@ function InputArea({ value, onChange, inputType, onTypeChange }: {
   return (
     <div>
       <div style={{display:"flex",gap:8,marginBottom:12}}>
-        {[{v:"text",label:"📝 テキスト"},{v:"url",label:"🔗 URL"},{v:"file",label:"📄 ファイル"}].map(opt=>(
+        {[{v:"text",label:"📝 テキスト"},{v:"file",label:"📄 ファイル"}].map(opt=>(
           <button key={opt.v} onClick={()=>onTypeChange(opt.v)} style={{padding:"6px 14px",borderRadius:20,fontSize:13,fontWeight:600,cursor:"pointer",background:inputType===opt.v?ACCENT:"#F1F5F9",color:inputType===opt.v?"#fff":"#475569",border:inputType===opt.v?`2px solid ${ACCENT}`:"2px solid transparent",transition:"all 0.15s"}}>{opt.label}</button>
         ))}
       </div>
@@ -509,7 +509,7 @@ function InputArea({ value, onChange, inputType, onTypeChange }: {
         </div>
       ):(
         <textarea value={value} onChange={e=>onChange(e.target.value)}
-          placeholder={inputType==="url"?"事例記事のURLを入力してください（例: https://...）":"事例のインタビュー記事や事例リーフレットのテキストを貼り付けてください..."}
+          placeholder="事例のインタビュー記事や事例リーフレットのテキストを貼り付けてください..."
           style={{width:"100%",minHeight:160,padding:"12px 14px",border:"1.5px solid #CBD5E1",borderRadius:10,fontSize:14,color:"#1E293B",background:"#fff",resize:"vertical",fontFamily:"inherit",lineHeight:1.6,outline:"none",boxSizing:"border-box"}}/>
       )}
     </div>
@@ -649,40 +649,7 @@ function Step1({ cases, setCases, productInfo, onNext }: {
     try {
       const ctx = [productInfo.fetched, productInfo.note].filter(Boolean).join("\n");
 
-      if (c.inputType === "url") {
-        // サーバー側でURLをフェッチしてテキスト抽出
-        const res = await fetch("/api/fetch-url", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: c.input.trim() }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(
-            `【URLの取得に失敗】\n${data.error || "URLの取得に失敗しました"}\n\n` +
-            `→ ページを直接ブラウザで開いて本文をコピーし、「📝 テキスト」タブに貼り付けてお試しください。`
-          );
-        }
-        let analysis;
-        try {
-          analysis = await analyzeCase(data.text, ctx);
-        } catch {
-          throw new Error(
-            `【事例情報の解析に失敗】\nこのページには事例記事の内容が含まれていない可能性があります。\n` +
-            `（例：ツール比較記事・商品紹介ページ・ナビゲーションのみのページ）\n\n` +
-            `→ 事例インタビューや導入事例のページを指定するか、\n` +
-            `　 ページの本文をコピーして「📝 テキスト」タブに貼り付けてお試しください。`
-          );
-        }
-        if (!analysis || !analysis.background) {
-          throw new Error(
-            `【事例情報を抽出できませんでした】\nページの本文が取得できなかった可能性があります。\n` +
-            `（JavaScriptで描画されるページは本文が取れない場合があります）\n\n` +
-            `→ ページをブラウザで開いて本文をコピーし、「📝 テキスト」タブに貼り付けてお試しください。`
-          );
-        }
-        updateCase(i, { analysis, loading: false });
-      } else if (c.inputType === "file" && c.input.startsWith("data:application/pdf;base64,")) {
+      if (c.inputType === "file" && c.input.startsWith("data:application/pdf;base64,")) {
         // PDFはAnthropicのdocumentタイプで直接解析
         const base64 = c.input.replace("data:application/pdf;base64,", "");
         const analysis = await analyzeCasePDF(base64, ctx);
