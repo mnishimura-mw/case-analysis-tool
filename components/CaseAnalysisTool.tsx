@@ -650,15 +650,18 @@ function Step1({ cases, setCases, productInfo, onNext }: {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "URLの取得に失敗しました");
         const analysis = await analyzeCase(data.text, ctx);
+        if (!analysis || !analysis.background) throw new Error("URLのページから事例情報を抽出できませんでした。有効な事例記事のURLをご確認ください");
         updateCase(i, { analysis, loading: false });
       } else if (c.inputType === "file" && c.input.startsWith("data:application/pdf;base64,")) {
         // PDFはAnthropicのdocumentタイプで直接解析
         const base64 = c.input.replace("data:application/pdf;base64,", "");
         const analysis = await analyzeCasePDF(base64, ctx);
+        if (!analysis || !analysis.background) throw new Error("PDFから事例情報を抽出できませんでした。有効な事例PDFをご確認ください");
         updateCase(i, { analysis, loading: false });
       } else {
         // テキスト入力またはテキストファイル
         const analysis = await analyzeCase(c.input, ctx);
+        if (!analysis || !analysis.background) throw new Error("テキストから事例情報を抽出できませんでした");
         updateCase(i, { analysis, loading: false });
       }
     } catch(e) {
