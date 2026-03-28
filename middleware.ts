@@ -1,62 +1,90 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+
+const SUPABASE_ENABLED =
+  !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  process.env.NEXT_PUBLIC_SUPABASE_URL !== "your_supabase_url_here";
+
+const TOKEN_COOKIE = "sa_token";
 
 export async function middleware(request: NextRequest) {
-  // Supabase が未設定の場合はスルー（Step A 互換）
-  if (
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    process.env.NEXT_PUBLIC_SUPABASE_URL === "your_supabase_url_here"
-  ) {
-    return NextResponse.next();
-  }
-
-  let supabaseResponse = NextResponse.next({ request });
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
-
-  // セッションを更新（重要：getUser() を必ず呼ぶこと）
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  if (!SUPABASE_ENABLED) return NextResponse.next();
 
   const pathname = request.nextUrl.pathname;
 
-  // 未ログインで /tool または /admin にアクセスした場合はログインページへリダイレクト
-  if (!user && (pathname.startsWith("/tool") || pathname.startsWith("/admin"))) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    url.search = "";
-    return NextResponse.redirect(url);
+  // ── ツール系: トークン認証 ──
+  if (pathname.startsWith("/tool")) {
+    // URLにtoken付き → Cookieに保存してリダイレクト
+    const tokenParam = request.nextUrl.searchParams.get("token");
+    if (tokenParam) {
+      const url = request.nextUrl.clone();
+      url.searchParams.delete("token");
+      const response = NextResponse.redirect(url);
+      response.cookies.set(TOKEN_COOKIE, tokenParam, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 90, // 90 days
+        path: "/",
+      });
+      return response;
+    }
+
+    // Cookieにトークンがあるか確認（実際のDB検証はページ側で行う）
+    const token = request.cookies.get(TOKEN_COOKIE)?.value;
+    if (!token) {
+      // トークンなし → トップページへ
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+
+    return NextResponse.next();
   }
 
-  // ログイン済みで / にアクセスした場合はツールへリダイレクト（クエリパラメータは除去）
-  if (user && pathname === "/") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/tool";
-    url.search = "";
-    return NextResponse.redirect(url);
+  // ── 管理画面: Google認証を維持 ──
+  if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
+    let supabaseResponse = NextResponse.next({ request });
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() { return request.cookies.getAll(); },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+            supabaseResponse = NextResponse.next({ request });
+            cookiesToSet.forEach(({ name, value, options }) =>
+              supabaseResponse.cookies.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+    return supabaseResponse;
   }
 
-  return supabaseResponse;
+  // ── ログインページ: ログイン済みなら /admin へ ──
+  if (pathname === "/") {
+    // ツール用トークンがあれば /tool へ
+    const token = request.cookies.get(TOKEN_COOKIE)?.value;
+    if (token) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/tool";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
