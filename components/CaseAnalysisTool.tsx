@@ -5,6 +5,7 @@ import type { CaseItem, ProductInfo, CommonData } from "@/lib/types";
 import { ACCENT, ACCENT_DARK, ACCENT_LIGHT, SUCCESS, EMPTY_CASE } from "@/lib/types";
 import { loadPptxGenJS } from "@/lib/slide";
 import { ToastProvider } from "@/components/ui/Toast";
+import FeedbackWidget from "@/components/ui/FeedbackWidget";
 import Step0 from "@/components/steps/Step0";
 import Step1 from "@/components/steps/Step1";
 import Step2 from "@/components/steps/Step2";
@@ -193,6 +194,7 @@ export default function CaseAnalysisTool({ isAdmin = false }: { isAdmin?: boolea
   return (
     <ToastProvider>
       <CaseAnalysisToolInner isAdmin={isAdmin} />
+      <FeedbackWidget />
     </ToastProvider>
   );
 }

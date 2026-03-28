@@ -47,7 +47,16 @@ interface AnalysisRecord {
   created_at: string;
 }
 
-type Section = "tokens" | "usage" | "history" | "admins";
+interface FeedbackItem {
+  id: string;
+  type: string;
+  message: string;
+  page: string | null;
+  error_detail: string | null;
+  created_at: string;
+}
+
+type Section = "tokens" | "usage" | "history" | "feedback" | "admins";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -75,6 +84,10 @@ export default function AdminPage() {
   // Analysis history
   const [history, setHistory] = useState<AnalysisRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+
+  // Feedback
+  const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
 
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -105,6 +118,13 @@ export default function AdminPage() {
     setHistoryLoading(false);
   };
 
+  const fetchFeedback = async () => {
+    setFeedbackLoading(true);
+    const res = await fetch("/api/admin/feedback");
+    if (res.ok) setFeedbackList(await res.json());
+    setFeedbackLoading(false);
+  };
+
   useEffect(() => {
     fetchUsers();
     fetchTokens();
@@ -113,6 +133,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (activeSection === "history" && history.length === 0) fetchHistory();
+    if (activeSection === "feedback" && feedbackList.length === 0) fetchFeedback();
   }, [activeSection]);
 
   // ── Handlers ──
@@ -189,8 +210,9 @@ export default function AdminPage() {
   const tabs: { key: Section; label: string; icon: string }[] = [
     { key: "usage",   label: "利用状況",   icon: "📊" },
     { key: "tokens",  label: "トークン管理", icon: "🔑" },
-    { key: "history", label: "分析履歴",   icon: "📋" },
-    { key: "admins",  label: "管理者",     icon: "👥" },
+    { key: "history",  label: "分析履歴",     icon: "📋" },
+    { key: "feedback", label: "フィードバック", icon: "💬" },
+    { key: "admins",   label: "管理者",      icon: "👥" },
   ];
 
   return (
@@ -406,6 +428,62 @@ export default function AdminPage() {
                       <div style={{ fontSize: 10, color: "#CBD5E1", marginTop: 2 }}>
                         Session: {h.session_id.slice(0, 8)}
                       </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ══════ Feedback ══════ */}
+        {activeSection === "feedback" && (
+          <>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 800, color: "#1E293B", margin: 0 }}>ユーザーフィードバック</h2>
+              <button onClick={fetchFeedback} disabled={feedbackLoading}
+                style={{ padding: "8px 16px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "#fff", color: ACCENT, border: `1.5px solid ${ACCENT}`, cursor: feedbackLoading ? "not-allowed" : "pointer" }}>
+                {feedbackLoading ? "読み込み中..." : "更新"}
+              </button>
+            </div>
+
+            {feedbackList.length === 0 ? (
+              <div style={{ background: "#fff", borderRadius: 14, padding: 32, border: "1.5px solid #E2E8F0", textAlign: "center", color: "#94A3B8" }}>
+                {feedbackLoading ? "読み込み中..." : "フィードバックはまだありません"}
+              </div>
+            ) : (
+              <div style={{ background: "#fff", borderRadius: 14, border: "1.5px solid #E2E8F0", overflow: "hidden" }}>
+                {feedbackList.map((fb, i) => {
+                  const typeStyle: Record<string, { label: string; color: string; bg: string }> = {
+                    feedback: { label: "💬 フィードバック", color: ACCENT, bg: ACCENT_LIGHT },
+                    bug:      { label: "🐛 不具合報告",     color: "#DC2626", bg: "#FEF2F2" },
+                    request:  { label: "✨ 機能リクエスト", color: "#7C3AED", bg: "#F5F3FF" },
+                  };
+                  const ts = typeStyle[fb.type] || typeStyle.feedback;
+                  return (
+                    <div key={fb.id} style={{ padding: "16px 24px", borderBottom: i < feedbackList.length - 1 ? "1px solid #F1F5F9" : "none" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <span style={{ background: ts.bg, color: ts.color, borderRadius: 6, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>
+                          {ts.label}
+                        </span>
+                        <span style={{ fontSize: 11, color: "#94A3B8" }}>
+                          {new Date(fb.created_at).toLocaleString("ja-JP")}
+                          {fb.page && <span style={{ marginLeft: 8 }}>📄 {fb.page}</span>}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 14, color: "#1E293B", lineHeight: 1.8, whiteSpace: "pre-wrap" }}>
+                        {fb.message}
+                      </div>
+                      {fb.error_detail && (
+                        <details style={{ marginTop: 8 }}>
+                          <summary style={{ fontSize: 12, color: "#DC2626", cursor: "pointer", fontWeight: 700 }}>
+                            エラー詳細
+                          </summary>
+                          <pre style={{ fontSize: 11, color: "#64748B", background: "#F8FAFC", padding: 10, borderRadius: 8, overflow: "auto", marginTop: 6 }}>
+                            {fb.error_detail}
+                          </pre>
+                        </details>
+                      )}
                     </div>
                   );
                 })}
