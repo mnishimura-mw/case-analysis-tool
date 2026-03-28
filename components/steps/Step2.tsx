@@ -9,8 +9,8 @@ import { useToast } from "@/components/ui/Toast";
 import StreamingPreview from "@/components/ui/StreamingPreview";
 
 const axes: { key: keyof CommonData; label: string; color: string; desc: string }[] = [
-  { key: "issues",    label: "①訴求すべき課題",    color: "purple", desc: "背景＋課題を統合 ─ 「なぜ今この課題が深刻か」のストーリー" },
-  { key: "strengths", label: "②製品の強み",         color: "green",  desc: "選定理由から ─ 競合に勝てる自社ならではの価値" },
+  { key: "issues",    label: "①訴求すべき課題",    color: "purple", desc: "複数の事例に共通する課題 ─ 顧客に「うちもそうだ」と言わせやすいテーマ" },
+  { key: "strengths", label: "②製品の強み",         color: "green",  desc: "顧客が自社製品の何に価値を感じて導入したか ─ 競合との差別化ポイント" },
   { key: "values",    label: "③導入の価値（効果）", color: "amber",  desc: "導入効果から ─ 投資対効果として伝えられる成果" },
 ];
 
