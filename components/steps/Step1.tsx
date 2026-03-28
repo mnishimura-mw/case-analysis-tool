@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { CaseItem, ProductInfo } from "@/lib/types";
 import { ACCENT, ACCENT_DARK, ACCENT_LIGHT, SUCCESS, MAX_CASES } from "@/lib/types";
 import { analyzeCase, analyzeCasePDF } from "@/lib/ai";
 import { downloadSlideFile } from "@/lib/slide";
+import { printElement } from "@/lib/print";
 import AnalysisCard from "@/components/ui/AnalysisCard";
 import InputArea from "@/components/ui/InputArea";
 import { useToast } from "@/components/ui/Toast";
@@ -23,6 +24,7 @@ export default function Step1({
 }) {
   const { toast } = useToast();
   const [streamTexts, setStreamTexts] = useState<Record<number, string>>({});
+  const caseRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const setStreamText = (i: number, text: string) =>
     setStreamTexts((prev) => ({ ...prev, [i]: text }));
@@ -108,6 +110,13 @@ export default function Step1({
     }
   };
 
+  const printCase = (i: number) => {
+    const el = caseRefs.current[i];
+    if (!el) return;
+    const c = cases[i];
+    printElement(el, `事例分析_${c.companyName || c.caseTitle || `事例${i + 1}`}`);
+  };
+
   const doneCases = cases.filter((c) => c.analysis).length;
 
   return (
@@ -145,6 +154,7 @@ export default function Step1({
         {cases.map((c, i) => (
           <div
             key={i}
+            ref={(el) => { caseRefs.current[i] = el; }}
             style={{
               background: "#fff", border: "1.5px solid #E2E8F0",
               borderRadius: 14, padding: 20, boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
@@ -185,17 +195,28 @@ export default function Step1({
                   </span>
                 )}
               </div>
-              <div data-role="case-actions" style={{ display: "flex", gap: 8 }}>
+              <div data-role="case-actions" className="no-print" style={{ display: "flex", gap: 8 }}>
                 {c.analysis && (
-                  <button
-                    onClick={() => downloadSlide(i)}
-                    style={{
-                      padding: "7px 16px", borderRadius: 8, fontSize: 13, fontWeight: 700,
-                      background: "#0F9D58", color: "#fff", border: "none", cursor: "pointer",
-                    }}
-                  >
-                    📥 PPTに出力
-                  </button>
+                  <>
+                    <button
+                      onClick={() => downloadSlide(i)}
+                      style={{
+                        padding: "7px 16px", borderRadius: 8, fontSize: 13, fontWeight: 700,
+                        background: "#0F9D58", color: "#fff", border: "none", cursor: "pointer",
+                      }}
+                    >
+                      📥 PPTに出力
+                    </button>
+                    <button
+                      onClick={() => printCase(i)}
+                      style={{
+                        padding: "7px 16px", borderRadius: 8, fontSize: 13, fontWeight: 700,
+                        background: "#fff", color: ACCENT, border: `1.5px solid ${ACCENT}`, cursor: "pointer",
+                      }}
+                    >
+                      🖨️ PDF保存
+                    </button>
+                  </>
                 )}
                 {cases.length > 1 && (
                   <button

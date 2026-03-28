@@ -49,6 +49,7 @@ export interface Requirements {
 }
 
 export interface Scenario {
+  title: string;
   issue: string;
   externalTrend: string;
   value: string;

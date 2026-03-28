@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { CommonData, ProductInfo, Scenario, Requirements } from "@/lib/types";
 import { ACCENT, ACCENT_LIGHT, SUCCESS } from "@/lib/types";
 import { analyzeScenario } from "@/lib/ai";
+import { printElement } from "@/lib/print";
 import { useToast } from "@/components/ui/Toast";
 import StreamingPreview from "@/components/ui/StreamingPreview";
 
@@ -38,6 +39,8 @@ export default function Step3({
   const [loading, setLoading] = useState(false);
   const [scenarios, setScenarios] = useState<Scenario[] | null>(null);
   const [streamText, setStreamText] = useState("");
+  const allScenariosRef = useRef<HTMLDivElement>(null);
+  const scenarioRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const run = async () => {
     setLoading(true);
@@ -60,6 +63,23 @@ export default function Step3({
     setLoading(false);
   };
 
+  const printAll = () => {
+    if (!allScenariosRef.current) return;
+    const productLabel = [productInfo.companyName, productInfo.name].filter(Boolean).join("_");
+    printElement(allScenariosRef.current, `啓蒙シナリオ_${productLabel || "全体"}`);
+  };
+
+  const printSingle = (index: number) => {
+    const el = scenarioRefs.current[index];
+    if (!el) return;
+    const sc = scenarios?.[index];
+    const title = sc?.title || `シナリオ${index + 1}`;
+    const productLabel = [productInfo.companyName, productInfo.name].filter(Boolean).join("_");
+    printElement(el, `${title}_${productLabel}`);
+  };
+
+  const productLabel = [productInfo.companyName, productInfo.name].filter(Boolean).join(" / ");
+
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
@@ -77,7 +97,7 @@ export default function Step3({
             }}
           >
             <span style={{ fontSize: 12, color: ACCENT, fontWeight: 700 }}>
-              📦 対象製品：{[productInfo.companyName, productInfo.name].filter(Boolean).join(" / ")}
+              📦 対象製品：{productLabel}
             </span>
           </div>
         )}
@@ -112,24 +132,62 @@ export default function Step3({
       {loading && <StreamingPreview text={streamText} />}
 
       {scenarios && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        <div ref={allScenariosRef} style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          {/* 全体保存ボタン */}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <button
+              onClick={printAll}
+              style={{
+                padding: "10px 20px", borderRadius: 10, fontSize: 13, fontWeight: 700,
+                background: "#fff", color: ACCENT, border: `1.5px solid ${ACCENT}`,
+                cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+              }}
+            >
+              🖨️ 全シナリオをPDF保存
+            </button>
+          </div>
+
           {scenarios.map((sc, i) => {
             const c = colors[i % colors.length];
             return (
-              <div key={i} style={{ background: c.bg, border: `2px solid ${c.border}`, borderRadius: 14, padding: 24 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
-                  <div
+              <div
+                key={i}
+                ref={(el) => { scenarioRefs.current[i] = el; }}
+                style={{ background: c.bg, border: `2px solid ${c.border}`, borderRadius: 14, padding: 24 }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div
+                      style={{
+                        width: 36, height: 36, borderRadius: "50%", background: c.num,
+                        color: "#fff", fontWeight: 900, fontSize: 16,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}
+                    >
+                      {i + 1}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: "#1E293B" }}>
+                        課題啓蒙シナリオ {i + 1}
+                      </div>
+                      {sc.title && (
+                        <div style={{ fontSize: 13, color: "#64748B", marginTop: 2 }}>
+                          {sc.title}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => printSingle(i)}
+                    className="no-print"
                     style={{
-                      width: 36, height: 36, borderRadius: "50%", background: c.num,
-                      color: "#fff", fontWeight: 900, fontSize: 16,
-                      display: "flex", alignItems: "center", justifyContent: "center",
+                      padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+                      background: "#fff", color: c.num, border: `1.5px solid ${c.border}`,
+                      cursor: "pointer", flexShrink: 0,
                     }}
                   >
-                    {i + 1}
-                  </div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: "#1E293B" }}>
-                    課題啓蒙シナリオ {i + 1}
-                  </div>
+                    🖨️ この シナリオを保存
+                  </button>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {labels.map((lab) => (

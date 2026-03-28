@@ -25,6 +25,12 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* ── Print styles ── */
+@media print {
+  .no-print { display: none !important; }
+  body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
 /* ── Mobile responsive overrides ── */
 @media (max-width: 768px) {
   /* Tab bar: horizontal scroll */

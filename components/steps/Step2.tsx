@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { CaseItem, CommonData } from "@/lib/types";
 import { ACCENT, ACCENT_DARK, NUMS, WARN } from "@/lib/types";
 import { analyzeCommon } from "@/lib/ai";
+import { printElement } from "@/lib/print";
 import Tag from "@/components/ui/Tag";
 import { useToast } from "@/components/ui/Toast";
 import StreamingPreview from "@/components/ui/StreamingPreview";
@@ -28,6 +29,12 @@ export default function Step2({
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [streamText, setStreamText] = useState("");
+  const resultsRef = useRef<HTMLDivElement>(null);
+
+  const printResults = () => {
+    if (!resultsRef.current) return;
+    printElement(resultsRef.current, "訴求軸分析結果");
+  };
 
   const run = async () => {
     setLoading(true);
@@ -73,7 +80,18 @@ export default function Step2({
       {loading && <StreamingPreview text={streamText} />}
 
       {commonData && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div ref={resultsRef} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div className="no-print" style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button
+              onClick={printResults}
+              style={{
+                padding: "8px 18px", borderRadius: 8, fontSize: 13, fontWeight: 700,
+                background: "#fff", color: ACCENT, border: `1.5px solid ${ACCENT}`, cursor: "pointer",
+              }}
+            >
+              🖨️ 訴求軸をPDF保存
+            </button>
+          </div>
           {axes.map((ax) => (
             <div key={ax.key} style={{ background: "#fff", border: "1.5px solid #E2E8F0", borderRadius: 14, padding: 20 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 14 }}>
