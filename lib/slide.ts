@@ -9,7 +9,7 @@ export function loadPptxGenJS(): Promise<any> {
       return;
     }
     const s = document.createElement("script");
-    s.src = "https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js";
+    s.src = "https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js";
     s.onload = () => resolve((window as any).PptxGenJS);
     s.onerror = () => reject(new Error("PptxGenJS の読み込みに失敗しました"));
     document.head.appendChild(s);
