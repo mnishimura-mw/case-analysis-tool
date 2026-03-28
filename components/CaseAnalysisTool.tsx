@@ -32,7 +32,7 @@ function logAnalysisHistory(data: {
   }).catch(() => {}); // fire and forget
 }
 
-function CaseAnalysisToolInner() {
+function CaseAnalysisToolInner({ isAdmin = false }: { isAdmin?: boolean }) {
   const [activeTab, setActiveTab] = useState(0);
   const [productInfo, setProductInfo] = useState<ProductInfo>({
     companyName: "", name: "", url: "", note: "", fetched: "",
@@ -111,6 +111,18 @@ function CaseAnalysisToolInner() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ color: "#93C5FD", fontSize: 13 }}>課題啓蒙型営業 / 要件啓蒙 シナリオ構築</div>
+          {isAdmin && (
+            <a
+              href="/admin"
+              style={{
+                padding: "6px 16px", borderRadius: 8, background: "rgba(255,255,255,0.15)",
+                color: "#fff", border: "1px solid rgba(255,255,255,0.3)",
+                fontSize: 12, fontWeight: 700, textDecoration: "none",
+              }}
+            >
+              管理画面
+            </a>
+          )}
         </div>
       </div>
 
@@ -177,10 +189,10 @@ function CaseAnalysisToolInner() {
   );
 }
 
-export default function CaseAnalysisTool() {
+export default function CaseAnalysisTool({ isAdmin = false }: { isAdmin?: boolean }) {
   return (
     <ToastProvider>
-      <CaseAnalysisToolInner />
+      <CaseAnalysisToolInner isAdmin={isAdmin} />
     </ToastProvider>
   );
 }

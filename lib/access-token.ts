@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
 import { createAdminClient } from "./supabase-server";
 
 const COOKIE_NAME = "sa_token";
@@ -19,13 +20,43 @@ export async function validateToken(token: string): Promise<boolean> {
 }
 
 /**
- * Check if the current request has a valid access token (from cookie).
+ * Check if the current request has valid access:
+ * 1. Valid access token in cookie, OR
+ * 2. Authenticated admin/allowed user session (supervisor mode)
  */
 export async function hasValidAccess(): Promise<boolean> {
   const cookieStore = await cookies();
+
+  // 1. トークン認証
   const token = cookieStore.get(COOKIE_NAME)?.value;
-  if (!token) return false;
-  return validateToken(token);
+  if (token) {
+    const valid = await validateToken(token);
+    if (valid) return true;
+  }
+
+  // 2. 管理者/許可ユーザーのセッション認証
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll(); },
+        setAll() {},
+      },
+    }
+  );
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user?.email) {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("allowed_users")
+      .select("id")
+      .eq("email", user.email)
+      .single();
+    if (data) return true;
+  }
+
+  return false;
 }
 
 /**

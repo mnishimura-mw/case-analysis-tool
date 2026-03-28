@@ -12,7 +12,7 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // ── ツール系: トークン認証 ──
+  // ── ツール系: トークン認証 or 管理者認証 ──
   if (pathname.startsWith("/tool")) {
     // URLにtoken付き → Cookieに保存してリダイレクト
     const tokenParam = request.nextUrl.searchParams.get("token");
@@ -30,17 +30,41 @@ export async function middleware(request: NextRequest) {
       return response;
     }
 
-    // Cookieにトークンがあるか確認（実際のDB検証はページ側で行う）
+    // CookieにトークンがあればOK
     const token = request.cookies.get(TOKEN_COOKIE)?.value;
-    if (!token) {
-      // トークンなし → トップページへ
-      const url = request.nextUrl.clone();
-      url.pathname = "/";
-      url.search = "";
-      return NextResponse.redirect(url);
+    if (token) {
+      return NextResponse.next();
     }
 
-    return NextResponse.next();
+    // トークンなし → 管理者セッションがあるか確認（スーパーバイザーモード）
+    let supabaseResponse = NextResponse.next({ request });
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() { return request.cookies.getAll(); },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+            supabaseResponse = NextResponse.next({ request });
+            cookiesToSet.forEach(({ name, value, options }) =>
+              supabaseResponse.cookies.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.email) {
+      // ログイン済み → allowed_usersにいればアクセス許可
+      return supabaseResponse;
+    }
+
+    // どちらもなし → トップページへ
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    url.search = "";
+    return NextResponse.redirect(url);
   }
 
   // ── 管理画面: Google認証を維持 ──
