@@ -384,10 +384,19 @@ export default function AdminPage() {
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h2 style={{ fontSize: 16, fontWeight: 800, color: "#1E293B", margin: 0 }}>分析履歴（匿名）</h2>
-              <button onClick={fetchHistory} disabled={historyLoading}
-                style={{ padding: "8px 16px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "#fff", color: ACCENT, border: `1.5px solid ${ACCENT}`, cursor: historyLoading ? "not-allowed" : "pointer" }}>
-                {historyLoading ? "読み込み中..." : "更新"}
-              </button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <a
+                  href="/api/admin/analysis-history?format=csv"
+                  download
+                  style={{ padding: "8px 16px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: SUCCESS, color: "#fff", border: "none", cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}
+                >
+                  📥 CSVダウンロード
+                </a>
+                <button onClick={fetchHistory} disabled={historyLoading}
+                  style={{ padding: "8px 16px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "#fff", color: ACCENT, border: `1.5px solid ${ACCENT}`, cursor: historyLoading ? "not-allowed" : "pointer" }}>
+                  {historyLoading ? "読み込み中..." : "更新"}
+                </button>
+              </div>
             </div>
 
             {history.length === 0 ? (
