@@ -45,8 +45,8 @@ export async function GET(request: NextRequest) {
           .single();
 
         if (allowedUser) {
-          // 許可リストに存在 → ツールへリダイレクト
-          return NextResponse.redirect(`${origin}/tool`);
+          // 許可リストに存在 → 管理画面へリダイレクト
+          return NextResponse.redirect(`${origin}/admin`);
         }
 
         // 許可リストにない → サインアウトしてエラー表示

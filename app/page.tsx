@@ -28,7 +28,7 @@ export default function TopPage() {
           <div style={{ fontSize: 40, marginBottom: 8 }}>🔍</div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: "#1E293B", margin: "0 0 8px" }}>事例分析ツール</h1>
           <p style={{ fontSize: 14, color: "#64748B", marginBottom: 28, lineHeight: 1.7 }}>
-            Sales Schoolメンバーシップ会員専用ツールです。<br />
+            会員専用ツールです。<br />
             Noteの限定記事内のリンクからアクセスしてください。
           </p>
 
