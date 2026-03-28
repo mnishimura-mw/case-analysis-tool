@@ -10,12 +10,16 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 90; // 90 days
  */
 export async function validateToken(token: string): Promise<boolean> {
   const admin = createAdminClient();
-  const { data } = await admin
+  const { data, error } = await admin
     .from("access_tokens")
     .select("id")
     .eq("token", token)
     .eq("is_active", true)
-    .single();
+    .maybeSingle();
+  if (error) {
+    console.error("Token validation query failed:", error.message);
+    return false; // fail closed
+  }
   return !!data;
 }
 
@@ -52,7 +56,7 @@ export async function hasValidAccess(): Promise<boolean> {
       .from("allowed_users")
       .select("id")
       .eq("email", user.email)
-      .single();
+      .maybeSingle();
     if (data) return true;
   }
 

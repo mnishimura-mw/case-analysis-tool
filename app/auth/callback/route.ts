@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
           .from("allowed_users")
           .select("email")
           .eq("email", user.email)
-          .single();
+          .maybeSingle();
 
         if (allowedUser) {
           // 許可リストに存在 → ツールへリダイレクト（管理画面へはヘッダーから遷移可能）

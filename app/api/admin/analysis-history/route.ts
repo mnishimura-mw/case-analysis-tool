@@ -12,14 +12,18 @@ async function isAdmin(req: NextRequest): Promise<boolean> {
   if (!user?.email) return false;
 
   const admin = createAdminClient();
-  const { data } = await admin.from("allowed_users").select("is_admin").eq("email", user.email).single();
+  const { data } = await admin.from("allowed_users").select("is_admin").eq("email", user.email).maybeSingle();
   return !!data?.is_admin;
 }
 
 function escCsv(val: unknown): string {
   if (val == null) return "";
-  const s = String(val);
-  if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+  let s = String(val);
+  // Prevent CSV formula injection (Excel/Sheets)
+  if (/^[=+\-@\t\r]/.test(s)) {
+    s = "'" + s; // prefix with single quote to neutralize formula
+  }
+  if (s.includes(",") || s.includes('"') || s.includes("\n") || s.includes("'")) {
     return '"' + s.replace(/"/g, '""') + '"';
   }
   return s;

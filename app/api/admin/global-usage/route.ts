@@ -13,7 +13,7 @@ async function isAdmin(req: NextRequest): Promise<boolean> {
   if (!user?.email) return false;
 
   const admin = createAdminClient();
-  const { data } = await admin.from("allowed_users").select("is_admin").eq("email", user.email).single();
+  const { data } = await admin.from("allowed_users").select("is_admin").eq("email", user.email).maybeSingle();
   return !!data?.is_admin;
 }
 

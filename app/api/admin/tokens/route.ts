@@ -13,7 +13,7 @@ async function isAdmin(req: NextRequest): Promise<boolean> {
   if (!user?.email) return false;
 
   const admin = createAdminClient();
-  const { data } = await admin.from("allowed_users").select("is_admin").eq("email", user.email).single();
+  const { data } = await admin.from("allowed_users").select("is_admin").eq("email", user.email).maybeSingle();
   return !!data?.is_admin;
 }
 
@@ -30,7 +30,10 @@ export async function POST(req: NextRequest) {
   const token = randomBytes(16).toString("hex");
   const admin = createAdminClient();
   const { error } = await admin.from("access_tokens").insert({ token, label: label || "新規トークン" });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("token insert error:", error.message);
+    return NextResponse.json({ error: "トークンの発行に失敗しました" }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }
 
@@ -39,6 +42,9 @@ export async function PATCH(req: NextRequest) {
   const { id, is_active } = await req.json();
   const admin = createAdminClient();
   const { error } = await admin.from("access_tokens").update({ is_active }).eq("id", id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("token update error:", error.message);
+    return NextResponse.json({ error: "トークンの更新に失敗しました" }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }

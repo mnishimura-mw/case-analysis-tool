@@ -4,30 +4,26 @@ import { checkRateLimit, releaseRequest, getClientIP } from "@/lib/rate-limit";
 import { checkGlobalQuota, logUsage } from "@/lib/quota";
 
 export async function POST(req: NextRequest) {
-  // 1. トークン認証
   if (!(await hasValidAccess())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const ip = getClientIP(req.headers);
-  let rateLimited = false;
 
+  // IP単位レート制限
+  const limit = checkRateLimit(ip);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: limit.reason },
+      { status: 429, headers: limit.retryAfterMs ? { "Retry-After": String(Math.ceil(limit.retryAfterMs / 1000)) } : undefined }
+    );
+  }
+
+  // ここからはreleaseRequest()を必ず呼ぶ必要がある
   try {
-    // 2. IP単位レート制限
-    const limit = checkRateLimit(ip);
-    if (!limit.allowed) {
-      return NextResponse.json(
-        { error: limit.reason },
-        { status: 429, headers: limit.retryAfterMs ? { "Retry-After": String(Math.ceil(limit.retryAfterMs / 1000)) } : undefined }
-      );
-    }
-    rateLimited = true;
-
-    // 3. グローバルクォータ
+    // グローバルクォータ
     const quota = await checkGlobalQuota();
     if (!quota.allowed) {
-      releaseRequest(ip);
-      rateLimited = false;
       return NextResponse.json({ error: quota.reason }, { status: 429 });
     }
 
@@ -36,8 +32,6 @@ export async function POST(req: NextRequest) {
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      releaseRequest(ip);
-      rateLimited = false;
       return NextResponse.json({ error: "ANTHROPIC_API_KEY is not configured" }, { status: 500 });
     }
 
@@ -52,28 +46,23 @@ export async function POST(req: NextRequest) {
     });
 
     if (!response.ok) {
-      releaseRequest(ip);
-      rateLimited = false;
       const errText = await response.text();
       return new Response(errText, { status: response.status });
     }
 
-    // 4. 利用ログ記録
     logUsage(ip, action ?? "unknown", { model: claudeBody.model });
 
-    // 5. ストリームをパススルー、完了時にレート制限解放
     const upstreamBody = response.body;
     if (!upstreamBody) {
-      releaseRequest(ip);
       return NextResponse.json({ error: "No response body" }, { status: 500 });
     }
 
+    // ストリーム完了時にreleaseRequest()を呼ぶ
     const transform = new TransformStream({
       transform(chunk, controller) { controller.enqueue(chunk); },
       flush() { releaseRequest(ip); },
     });
 
-    rateLimited = false; // flush() will handle release
     return new Response(upstreamBody.pipeThrough(transform), {
       headers: {
         "Content-Type": "text/event-stream",
@@ -82,8 +71,12 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    if (rateLimited) releaseRequest(ip);
     console.error("Claude API stream error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  } finally {
+    // ストリーミングレスポンスを返した場合はflush/cancelで解放されるが、
+    // それ以前にエラーで抜けた場合はここで解放
+    // 二重解放されてもreleaseRequestはinflight<0にならないよう安全
+    releaseRequest(ip);
   }
 }

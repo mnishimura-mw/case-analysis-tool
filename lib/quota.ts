@@ -14,7 +14,7 @@ async function getSetting(key: string, fallback: number): Promise<number> {
     .from("app_settings")
     .select("value")
     .eq("key", key)
-    .single();
+    .maybeSingle();
   return data ? parseInt(data.value, 10) : fallback;
 }
 

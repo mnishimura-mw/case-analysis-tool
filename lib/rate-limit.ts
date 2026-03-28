@@ -41,6 +41,7 @@ export interface RateLimitResult {
  * Check rate limit by key (IP address or any identifier).
  */
 export function checkRateLimit(key: string): RateLimitResult {
+  maybeCleanup();
   const state = getState(key);
   pruneOldTimestamps(state);
 
@@ -86,22 +87,22 @@ export function getClientIP(headers: Headers): string {
   );
 }
 
-// Periodic cleanup
-if (typeof globalThis !== "undefined") {
-  const g = globalThis as Record<string, unknown>;
-  if (!g.__rateLimitCleanup) {
-    g.__rateLimitCleanup = setInterval(() => {
-      const cutoff = Date.now() - RATE_LIMIT_WINDOW_MS * 2;
-      for (const [key, state] of states) {
-        pruneOldTimestamps(state);
-        if (state.timestamps.length === 0 && state.inflight === 0) {
-          states.delete(key);
-        }
-        const latest = state.timestamps[state.timestamps.length - 1];
-        if (state.inflight > 0 && (!latest || latest < cutoff)) {
-          state.inflight = 0;
-        }
-      }
-    }, 5 * 60_000);
+// Inline cleanup on every checkRateLimit call (serverless-safe, no setInterval)
+let lastCleanup = Date.now();
+function maybeCleanup() {
+  const now = Date.now();
+  if (now - lastCleanup < 60_000) return; // max once per minute
+  lastCleanup = now;
+  const cutoff = now - RATE_LIMIT_WINDOW_MS * 2;
+  for (const [key, state] of states) {
+    pruneOldTimestamps(state);
+    if (state.timestamps.length === 0 && state.inflight === 0) {
+      states.delete(key);
+    }
+    // Reset stuck inflight counters
+    const latest = state.timestamps[state.timestamps.length - 1];
+    if (state.inflight > 0 && (!latest || latest < cutoff)) {
+      state.inflight = 0;
+    }
   }
 }

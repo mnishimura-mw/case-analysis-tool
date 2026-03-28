@@ -14,7 +14,7 @@ async function getAdminUser() {
     .from("allowed_users")
     .select("is_admin")
     .eq("email", user.email)
-    .single();
+    .maybeSingle();
 
   if (!data?.is_admin) return null;
   return user;
@@ -41,16 +41,25 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { email, is_admin = false } = await req.json();
-  if (!email) return NextResponse.json({ error: "email is required" }, { status: 400 });
+  if (!email) return NextResponse.json({ error: "メールアドレスを入力してください" }, { status: 400 });
+
+  const trimmed = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    return NextResponse.json({ error: "有効なメールアドレスを入力してください" }, { status: 400 });
+  }
 
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("allowed_users")
-    .insert({ email: email.trim().toLowerCase(), is_admin })
+    .insert({ email: trimmed, is_admin })
     .select()
-    .single();
+    .maybeSingle();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) {
+    console.error("user insert error:", error.message);
+    const msg = error.message.includes("duplicate") ? "このメールアドレスは既に登録されています" : "ユーザーの追加に失敗しました";
+    return NextResponse.json({ error: msg }, { status: 400 });
+  }
   return NextResponse.json(data, { status: 201 });
 }
 

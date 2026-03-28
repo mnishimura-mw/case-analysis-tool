@@ -34,7 +34,7 @@ export default async function ToolPage() {
       .from("allowed_users")
       .select("is_admin")
       .eq("email", user.email)
-      .single();
+      .maybeSingle();
     if (data) {
       return <CaseAnalysisTool isAdmin={!!data.is_admin} />;
     }
